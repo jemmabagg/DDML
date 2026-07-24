@@ -75,6 +75,18 @@ CC3_ENDCAP_PY_INTERFACE = ModelConfig(
     triggers=EM_TRIGGER_10_GEV,
 )
 
+AS1_BARREL_PY_INTERFACE = ModelConfig(
+    plugin="CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython",
+    geometry=ILD_BARREL,
+    plugin_properties={
+        "PythonModule": "allshowers_1_wrapper",
+        "EntryPoint": "run_inference",
+    },
+    correct_angles=False,
+    applicable_particles=EM_PARTICLES,
+    triggers=EM_TRIGGER_10_GEV,
+)
+
 # # ---------------------------------------------------------------------------
 # # ONNX
 # # ---------------------------------------------------------------------------

@@ -296,9 +296,9 @@ presets = get_presets_from_args()
 SIM.physics.setupUserPhysics(ddml_physics(presets))
 
 
-def aiDancePythonAS(kernel):
+def aiDancePythonCC3(kernel):
     ild = True
-    AllShowers = True
+    CaloClouds = True
     old_DD4hep = False  ## use for DD4hep versions/commits before ~ Apr 21st 2023
 
     if ild == True:
@@ -310,8 +310,8 @@ def aiDancePythonAS(kernel):
         ml_barrel_symmetry = 12
         ml_endcap_name = "ECalEndcap"
 
-    if AllShowers == True:
-        ml_file = "../../EndToEndAllShowers/model_files"
+    if CaloClouds == True:
+        ml_file = "../models/CC3_SF_2A.pt"
         ml_model = (
             "CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython"
         )
@@ -359,7 +359,7 @@ def aiDancePythonAS(kernel):
         "gamma": 10.0 * GeV,
     }
     model.ModelPath = ml_file
-    model.PythonModule = "allshowers_1_wrapper"
+    model.PythonModule = "cc3_sf_2a_wrapper"
     model.PythonPath = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../python/examples")
     )
@@ -381,7 +381,7 @@ def aiDancePythonAS(kernel):
         "gamma": 10.0 * GeV,
     }
     model1.ModelPath = ml_file
-    model1.PythonModule = "allshowers_1_wrapper"
+    model1.PythonModule = "cc3_sf_2a_wrapper"
     model1.PythonPath = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../python/examples")
     )
