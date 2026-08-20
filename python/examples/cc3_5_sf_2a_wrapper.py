@@ -2,24 +2,26 @@
 """
 
 import os
+import sys
 import numpy as np
 import torch
-import yaml
+
+sys.path.insert(0, "/home/baggjemm/CaloCloudi")
+from src.evaluation import inference
 
 torch.set_num_threads(1)
 
 n_layers = 78
 
 #pcFM Model Path
-_pcfm_path = os.path.expanduser("/home/baggjemm/PointCountFM_private/results/20260817_133705_TEMPO_PandT_/checkpoint.pt") #Get the right pcfm model
-
-_pcfm = torch.jit.load(_pcfm_path).eval().to("cpu")
+pcfm_path = os.path.expanduser("/home/baggjemm/PointCountFM_private/results/20260817_133705_TEMPO_PandT_/compiled.pt") #Get the right pcfm model
+pcfm = torch.jit.load(pcfm_path, map_location="cpu").eval()
 
 #CaloCloud Model
-_cc_path = os.path.expanduser("/home/baggjemm/CaloCloudi/data/logs/2026_08_17__15_19_32/checkpoints/2026-08-18_14-35-58_model.pt")
-_cc = torch.jit.load(_cc_path).eval().to("cpu")
+cc_path = os.path.expanduser("/home/baggjemm/CaloCloudi/data/logs/2026_08_17__15_19_32/checkpoints/2026-08-18_14-35-58_model.pt")
+sampler = inference.Sampler.from_model_path(cc_path)
 
-#Loading in config file
+'''#Loading in config file
 with open("/home/baggjemm/CaloCloudi/data/logs/2026_08_17__15_19_32/config.yaml") as stream:
     config = yaml.safe_load(stream)
 
@@ -142,7 +144,7 @@ def get_layer_centers(config, coordinates="data"):
     layer_bottom_pos = np.array(layer_bottom_pos)
     layer_centers = layer_bottom_pos + cell_thickness / 2
 
-    return layer_centers
+    return layer_centers'''
 
 
 @torch.inference_mode()
@@ -170,10 +172,19 @@ def run_inference(inputs):
     ##pcFM per layer
     ## we get counts per layer and energy per layer from pcFM
 
-    raw = _pcfm(cond)
+    raw = pcfm(cond)
     if raw[-1].shape[1] != n_layers:
         raw = raw[:-1]
     pcfm_out = torch.cat(list(raw), dim=1)
+
+    # hallucination guard (from inference_cond_file.py _check_hallucinations):
+    # re-sample if per-layer counts blow up, BEFORE clamping. Without this one
+    # bad shower makes total_points huge and can OOM the sampler.
+    while pcfm_out[:, :n_layers].max() > 1e4 or pcfm_out[:, :n_layers].min() < -1e4:
+        raw = pcfm(cond)
+        if raw[-1].shape[1] != n_layers:
+            raw = raw[:-1]
+        pcfm_out = torch.cat(list(raw), dim=1)
 
     #post processing (from pcFM)
     pcfm_out = torch.clamp(pcfm_out, min=0.0) # clamp >= 0
@@ -190,11 +201,10 @@ def run_inference(inputs):
     cond_np = cond.cpu().numpy()
     points_per_layer = counts_int[None, :]
     energy_pl = energy_per_layer[None, :]
-    num_points = points_per_layer.sum(1)
 
-    sample = _sample_cloud(cond_np, num_points)
+    sample = sampler.sample(cond_np, points_per_layer.sum(1))
 
-    physical_points, point_layer_ids = sample_to_physical(sample, points_per_layer, config)
+    physical_points, point_layer_ids = inference.sample_to_physical(sample, points_per_layer, sampler.config)
 
     #Rescale each layer's energy to pcFM's energy_per_layer (taken from CC)
     energies = physical_points[:, :, 3].copy()
@@ -209,7 +219,7 @@ def run_inference(inputs):
     physical_points[:,:,3] = energies * scale_per_point
 
     #Unshift to true detector positions
-    physical_points = unshift_points(physical_points, point_layer_ids, cond_np, config)
+    physical_points = inference.unshift_points(physical_points, point_layer_ids, cond_np, sampler.config)
 
     #extract real hits
     real = (physical_points[0, :, 3] > 0) & (point_layer_ids[0] >= 0)
