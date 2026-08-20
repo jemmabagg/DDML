@@ -14,7 +14,7 @@ torch.set_num_threads(1)
 n_layers = 78
 
 #pcFM Model Path
-pcfm_path = os.path.expanduser("/home/baggjemm/PointCountFM_private/results/20260729_164316_PointCountFM/compiled.pt") #Get the right pcfm model
+pcfm_path = os.path.expanduser("/home/baggjemm/PointCountFM_private/results/20260817_133705_TEMPO_PandT_/compiled.pt") #Get the right pcfm model
 pcfm = torch.jit.load(pcfm_path, map_location="cpu").eval()
 
 #CaloCloud Model
