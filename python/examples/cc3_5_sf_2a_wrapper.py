@@ -236,7 +236,7 @@ def run_inference(inputs):
  
     points = np.stack([x_out, y_out, layer_out.astype(np.float32), e_out], axis=1).astype(np.float32)
 
-    header = np.bincount(layer_out, minlength=n_layers).astype(np.float32)
+    header = np.bincount(layer_out.astype(np.int64), minlength=n_layers).astype(np.float32)
    
     full_report = np.concatenate([header, points.ravel()]).astype(np.float32, copy=False)
     return full_report
