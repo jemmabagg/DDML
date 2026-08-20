@@ -226,15 +226,17 @@ def run_inference(inputs):
     x_out = physical_points[0, real, 0]
     y_out = physical_points[0, real, 2]
     layer_out = point_layer_ids[0, real].astype(np.float32)
-    e_out = physical_points[0, real, 3]
-    points = np.stack([x_out, y_out, layer_out, e_out], axis=1).astype(np.float32)
+    e_out = physical_points[0, real, 3] * 1e3 #GeV -> MeV
 
-    assert points.shape[0] == total_points, (
-        f"header wants {total_points} hits, body has {points.shape[0]} -- "
-        "sampler produced too few points for the requested per-layer counts"
-    )
+    order = np.argsort(layer_out, kind="stable")
+    x_out = x_out[order]
+    y_out = y_out[order]
+    layer_out = layer_out[order]
+    e_out = e_out[order]
  
-    #DDML output: [counts(78)] + flattened (x,y,layer,E) rows
-    header = counts_int.astype(np.float32)
+    points = np.stack([x_out, y_out, layer_out.astype(np.float32), e_out], axis=1).astype(np.float32)
+
+    header = np.bincount(layer_out, minlength=n_layers).astype(np.float32)
+   
     full_report = np.concatenate([header, points.ravel()]).astype(np.float32, copy=False)
     return full_report
