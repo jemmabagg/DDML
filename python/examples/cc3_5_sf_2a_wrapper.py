@@ -145,6 +145,11 @@ def run_inference(inputs):
     theta_deg = torch.from_numpy(np.asarray(inputs[1], dtype=np.float32).reshape(-1)).to(dtype)   # (1,)
     phi_deg = torch.from_numpy(np.asarray(inputs[2], dtype=np.float32).reshape(-1)).to(dtype)     # (1,)
 
+    print("\n===== ML INPUT =====")
+    print("energy:", inputs[0])
+    print("theta:", inputs[1])
+    print("phi:", inputs[2])
+
     #direction unit vector
     #DDML gives degrees, but torch.sin/cos want radians
     theta = torch.deg2rad(theta_deg)
