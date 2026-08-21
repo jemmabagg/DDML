@@ -237,13 +237,6 @@ def run_inference(inputs):
     y_out = y_out[order]
     layer_out = layer_out[order]
     e_out = e_out[order]
-
-    n_ecal = 30  # number of layers m_caloLayerDistances holds for the barrel model
-    keep_layer = layer_out < n_ecal
-    x_out   = x_out[keep_layer]
-    y_out   = y_out[keep_layer]
-    layer_out = layer_out[keep_layer]
-    e_out   = e_out[keep_layer]
  
     points = np.stack([x_out, y_out, layer_out.astype(np.float32), e_out], axis=1).astype(np.float32)
 
