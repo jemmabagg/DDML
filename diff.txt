@@ -1,0 +1,616 @@
+diff --git a/.gitignore b/.gitignore
+index f2f1f94..3b37058 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,3 +19,4 @@ run.sh
+ compile_commands.json
+ 
+ *.pyc
++.aider*
+diff --git a/README.md b/README.md
+index 4eb6df6..40e89ef 100644
+--- a/README.md
++++ b/README.md
+@@ -18,6 +18,12 @@ Generative Models: Towards a First Physics Application*, P. McKeown et al., PoS
+ ### Environment Setup
+ Access to `cvmfs` required.
+ 
++> Comment; 22 probably worked at some point, now in Ubuntu 22 we get 
++```
++Unsupported OS or OS couldn't be correctly detected, aborting...
++Supported OSes are: AlmaLinux/RockyLinux/RHEL 9, Ubuntu 24.04, and Ubuntu 26.04
++```
++
+ The library can be run in apptainer with an Ubuntu 22.04 docker image as follows, with bind mounting to `cvmfs`:
+ ```
+ mkdir cvmfs
+@@ -45,7 +51,10 @@ Now build as usual
+ ```
+ mkdir build
+ cd build
+-cmake ..
++#cmake ..
++# henry need the flag set to on, otherwise the plugin isn't compiled
++cmake -DDDML_ENABLE_EMBEDDED_PYINFERENCE=ON ..
++# Henry; works when the run_cc3_pywrapper_ild is commented out of tests/CMakeLists.txt
+ make -j4 install
+ ```
+ 
+@@ -60,8 +69,24 @@ source ../install/bin/thisDDML.sh
+ The simulation can then be run as usual with ddsim- for example for the ILD detector:
+ 
+ ```
++# HENRY; apparently we need to explicity add this python path
++ddml_python=$(readlink -f ../python)
++plugin_python=$(readlink -f ../python/examples)
++export PYTHONPATH=${PYTHONPATH}:${ddml_python}:${plugin_python}
+ cd ../scripts
+-ddsim --steeringFile ddsim_steer.py --compactFile $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml
++#ddsim --steeringFile ddsim_steer.py --compactFile $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml
++# need to specify the --ml-model CC3_BARREL_PY_INTERFACE and an --inputFile
++ddsim --steeringFile ddsim_steer_cc3.py \
++ --compactFile $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml \
++ --ml-model CC3_BARREL_PY_INTERFACE \
++ --inputFile /data/dust/group/ilc/sft-ml/datasets/angular/simulation_inputs/ILD-barrelSmallSegment-singleParticles-gen-E1010pdg22.slcio
++```
++or for allshowers (must be on a GPU node, and note that multiple instances may cause crashes)
++```
++ddsim --steeringFile ddsim_steer.py \
++ --compactFile $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml \
++ --ml-model AS1_BARREL_PY_INTERFACE \
++ --inputFile /data/dust/group/ilc/sft-ml/datasets/angular/simulation_inputs/ILD-barrelSmallSegment-singleParticles-gen-E1010pdg22.slcio
+ ```
+ 
+ Depending on the setup in `ddsim_steer.py`, either a `.slcio` file or a `.edm4hep.root` file can be written
+@@ -69,6 +94,7 @@ Depending on the setup in `ddsim_steer.py`, either a `.slcio` file or a `.edm4he
+ Events can be visualised in the standard way for `.slcio` file or a `.edm4hep.root` files, e.g for `.slcio` with ILD:
+ 
+ ```
++# gets a permission error for the "Gearfile"
+ ced2go -d $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml dummyOutput.slcio
+ ```
+ 
+diff --git a/example_job.sh b/example_job.sh
+new file mode 100755
+index 0000000..ecc764b
+--- /dev/null
++++ b/example_job.sh
+@@ -0,0 +1,26 @@
++#!/bin/bash
++#SBATCH --time 1-00:00:00
++#SBATCH --nodes 1
++#SBATCH --partition maxgpu
++#SBATCH --job-name main
++#SBATCH --mail-type=FAIL
++#SBATCH --mail-user=henry.day-hall@desy.de
++#SBATCH --output /data/dust/user/dayhallh/data/AllShowers/EndToEnd/joblogs/%j.out      # terminal output
++#SBATCH --error /data/dust/user/dayhallh/data/AllShowers/EndToEnd/joblogs/%j.err
++
++SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
++cd $SCRIPT_DIR
++source setup_env_nightly.sh
++source install/bin/thisDDML.sh
++ddml_python=$(readlink -f python)
++plugin_python=$(readlink -f python/examples)
++export PYTHONPATH=${PYTHONPATH}:${ddml_python}:${plugin_python}
++
++cd scripts
++# NOTE - be sure to change --compactFile and --inputFile apropriately
++ddsim --steeringFile ddsim_steer.py \
++ --compactFile $k4geo_DIR/ILD/compact/ILD_l5_o1_v02/ILD_l5_o1_v02.xml \
++ --ml-model AS1_BARREL_PY_INTERFACE \
++ --inputFile /data/dust/group/ilc/sft-ml/datasets/angular/simulation_inputs/ILD-barrelSmallSegment-singleParticles-gen-E1010pdg22.slcio \
++ --numberOfEvents 10
++ #--outputFile /data/dust/user/dayhallh/data/AllShowers/EndToEnd/test.edm4hep.root
+diff --git a/python/ddml/configs.py b/python/ddml/configs.py
+index 6dd1f15..2c81111 100644
+--- a/python/ddml/configs.py
++++ b/python/ddml/configs.py
+@@ -75,6 +75,18 @@ CC3_ENDCAP_PY_INTERFACE = ModelConfig(
+     triggers=EM_TRIGGER_10_GEV,
+ )
+ 
++AS1_BARREL_PY_INTERFACE = ModelConfig(
++    plugin="CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython",
++    geometry=ILD_BARREL,
++    plugin_properties={
++        "PythonModule": "allshowers_1_wrapper",
++        "EntryPoint": "run_inference",
++    },
++    correct_angles=False,
++    applicable_particles=EM_PARTICLES,
++    triggers=EM_TRIGGER_10_GEV,
++)
++
+ # # ---------------------------------------------------------------------------
+ # # ONNX
+ # # ---------------------------------------------------------------------------
+diff --git a/python/examples/allshowers_1_wrapper.py b/python/examples/allshowers_1_wrapper.py
+new file mode 100644
+index 0000000..601fc16
+--- /dev/null
++++ b/python/examples/allshowers_1_wrapper.py
+@@ -0,0 +1,13 @@
++import sys
++import os
++
++endtoendallshowers_path = os.path.abspath(
++    os.path.join(os.path.dirname(__file__), "../../../EndToEndAllShowers")
++)
++assert os.path.exists(endtoendallshowers_path)
++generator_module = os.path.join(endtoendallshowers_path, "generator.py")
++assert os.path.exists(generator_module)
++
++sys.path.append(endtoendallshowers_path)
++from generator import run_photon as run_inference
++
+diff --git a/scripts/ddsim_steer.py b/scripts/ddsim_steer.py
+index 847da13..531f6b7 100644
+--- a/scripts/ddsim_steer.py
++++ b/scripts/ddsim_steer.py
+@@ -296,9 +296,9 @@ presets = get_presets_from_args()
+ SIM.physics.setupUserPhysics(ddml_physics(presets))
+ 
+ 
+-def aiDancePythonCC3(kernel):
++def aiDancePythonAS(kernel):
+     ild = True
+-    CaloClouds = True
++    AllShowers = True
+     old_DD4hep = False  ## use for DD4hep versions/commits before ~ Apr 21st 2023
+ 
+     if ild == True:
+@@ -310,8 +310,8 @@ def aiDancePythonCC3(kernel):
+         ml_barrel_symmetry = 12
+         ml_endcap_name = "ECalEndcap"
+ 
+-    if CaloClouds == True:
+-        ml_file = "../models/CC3_SF_2A.pt"
++    if AllShowers == True:
++        ml_file = "../../EndToEndAllShowers/model_files"
+         ml_model = (
+             "CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython"
+         )
+@@ -359,7 +359,7 @@ def aiDancePythonCC3(kernel):
+         "gamma": 10.0 * GeV,
+     }
+     model.ModelPath = ml_file
+-    model.PythonModule = "cc3_sf_2a_wrapper"
++    model.PythonModule = "allshowers_1_wrapper"
+     model.PythonPath = os.path.abspath(
+         os.path.join(os.path.dirname(__file__), "../python/examples")
+     )
+@@ -381,7 +381,7 @@ def aiDancePythonCC3(kernel):
+         "gamma": 10.0 * GeV,
+     }
+     model1.ModelPath = ml_file
+-    model1.PythonModule = "cc3_sf_2a_wrapper"
++    model1.PythonModule = "allshowers_1_wrapper"
+     model1.PythonPath = os.path.abspath(
+         os.path.join(os.path.dirname(__file__), "../python/examples")
+     )
+diff --git a/scripts/ddsim_steer_cc3.py b/scripts/ddsim_steer_cc3.py
+new file mode 100644
+index 0000000..847da13
+--- /dev/null
++++ b/scripts/ddsim_steer_cc3.py
+@@ -0,0 +1,401 @@
++######################################################################
++#
++#  standard steering file for ILD simulation
++#
++#
++#
++######################################################################
++from DDSim.DD4hepSimulation import DD4hepSimulation
++from g4units import m, mm, MeV, rad
++
++import os
++
++from ddml import ddml_physics, get_presets_from_args
++
++
++SIM = DD4hepSimulation()
++
++## The compact XML file
++SIM.compactFile = ""
++## Lorentz boost for the crossing angle, in radian!
++SIM.crossingAngleBoost = 7.0e-3 * rad
++SIM.enableDetailedShowerMode = True
++SIM.enableG4GPS = False
++SIM.enableG4Gun = False
++SIM.enableGun = False
++## InputFiles for simulation .stdhep, .slcio, .HEPEvt, .hepevt, .hepmc, .pairs files are supported
++SIM.inputFiles = []
++## Macro file to execute for runType 'run' or 'vis'
++# SIM.macroFile = "./test_onnx.mac"
++## number of events to simulate, used in batch mode
++SIM.numberOfEvents = 42
++## Outputfile from the simulation,only lcio output is supported
++# SIM.outputFile = "dummyOutput_edm4hep.root" ##"dummyOutput.slcio"
++SIM.outputFile = "dummyOutput.slcio"
++
++## Physics list to use in simulation
++SIM.physicsList = None
++## Verbosity use integers from 1(most) to 7(least) verbose
++## or strings: VERBOSE, DEBUG, INFO, WARNING, ERROR, FATAL, ALWAYS
++SIM.printLevel = "INFO"
++## The type of action to do in this invocation
++## batch: just simulate some events, needs numberOfEvents, and input file or gun
++## vis: enable visualisation, run the macroFile if it is set
++## run: run the macroFile and exit
++## shell: enable interactive session
++SIM.runType = "batch"  # "batch"
++## Skip first N events when reading a file
++SIM.skipNEvents = 0
++## Steering file to change default behaviour
++SIM.steeringFile = None
++## FourVector of translation for the Smearing of the Vertex position: x y z t
++SIM.vertexOffset = [0.0, 0.0, 0.0, 0.0]
++## FourVector of the Sigma for the Smearing of the Vertex position: x y z t
++SIM.vertexSigma = [0.0, 0.0, 0.0, 0.0]
++
++
++################################################################################
++## Action holding sensitive detector actions
++##   The default tracker and calorimeter actions can be set with
++##
++##   >>> SIM = DD4hepSimulation()
++##   >>> SIM.action.tracker = ('Geant4TrackerWeightedAction', {'HitPositionCombination': 2, 'CollectSingleDeposits': False})
++##   >>> SIM.action.calo    = "Geant4CalorimeterAction"
++##
++##   for specific subdetectors specific sensitive detectors can be set based on pattern matching
++##
++##   >>> SIM = DD4hepSimulation()
++##   >>> SIM.action.mapActions['tpc'] = "TPCSDAction"
++##
++##   and additional parameters for the sensitive detectors can be set when the map is given a tuple
++##
++##   >>> SIM = DD4hepSimulation()
++##   >>> SIM.action.mapActions['ecal'] =( "CaloPreShowerSDAction", {"FirstLayerNumber": 1} )
++##
++##
++################################################################################
++
++##  set the default calorimeter action
++SIM.action.calo = "Geant4ScintillatorCalorimeterAction"
++
++##  create a map of patterns and actions to be applied to sensitive detectors
++##         example: SIM.action.mapActions['tpc'] = "TPCSDAction"
++SIM.action.mapActions = {}
++
++SIM.action.mapActions["tpc"] = "TPCSDAction"
++
++##  set the default tracker action
++SIM.action.tracker = (
++    "Geant4TrackerWeightedAction",
++    {"HitPositionCombination": 2, "CollectSingleDeposits": False},
++)
++
++
++################################################################################
++## Configuration for the magnetic field (stepper)
++################################################################################
++## --- used in v01-19-05 :
++SIM.field.delta_chord = 1e-05
++SIM.field.delta_intersection = 1e-05
++SIM.field.delta_one_step = 0.5e-03 * mm
++SIM.field.eps_max = 1e-04
++SIM.field.eps_min = 1e-05
++SIM.field.equation = "Mag_UsualEqRhs"
++SIM.field.largest_step = 10.0 * m
++SIM.field.min_chord_step = 1.0e-2 * mm
++SIM.field.stepper = "HelixSimpleRunge"
++
++## ---  default values in ddsim
++##SIM.field.delta_chord = 0.25
++##SIM.field.delta_intersection = 0.001
++##SIM.field.delta_one_step = 0.01
++##SIM.field.eps_max = 0.001
++##SIM.field.eps_min = 5e-05
++##SIM.field.equation = "Mag_UsualEqRhs"
++##SIM.field.largest_step = 10000.0
++##SIM.field.min_chord_step = 0.01
++##SIM.field.stepper = "G4ClassicalRK4"
++
++################################################################################
++## Configuration for sensitive detector filters
++##
++##   Set the default filter for tracker or caliromter
++##   >>> SIM.filter.tracker = "edep1kev"
++##   >>> SIM.filter.calo = ""
++##
++##   Assign a filter to a sensitive detector via pattern matching
++##   >>> SIM.filter.mapDetFilter['FTD'] = "edep1kev"
++##
++##   Or more than one filter:
++##   >>> SIM.filter.mapDetFilter['FTD'] = ["edep1kev", "geantino"]
++##
++##   Don't use the default filter or anything else:
++##   >>> SIM.filter.mapDetFilter['TPC'] = None ## or "" or []
++##
++##   Create a custom filter. The dictionary is used to instantiate the filter later on
++##   >>> SIM.filter.filters['edep3kev'] = dict(name="EnergyDepositMinimumCut/3keV", parameter={"Cut": 3.0*keV} )
++##
++##
++################################################################################
++
++##  default filter for calorimeter sensitive detectors; this is applied if no other filter is used for a calorimeter
++SIM.filter.calo = "edep0"
++
++##  list of filter objects: map between name and parameter dictionary
++SIM.filter.filters = {
++    "edep0": {"parameter": {"Cut": 0.0}, "name": "EnergyDepositMinimumCut/Cut0"},
++    "geantino": {"parameter": {}, "name": "GeantinoRejectFilter/GeantinoRejector"},
++    "edep1kev": {"parameter": {"Cut": 0.001}, "name": "EnergyDepositMinimumCut"},
++}
++
++##  a map between patterns and filter objects, using patterns to attach filters to sensitive detector
++SIM.filter.mapDetFilter = {}
++
++SIM.filter.mapDetFilter["TPC"] = None
++
++##  default filter for tracking sensitive detectors; this is applied if no other filter is used for a tracker
++SIM.filter.tracker = "edep1kev"
++
++
++################################################################################
++## Configuration for the GuineaPig InputFiles
++################################################################################
++
++## Set the number of pair particles to simulate per event.
++##     Only used if inputFile ends with ".pairs"
++##     If "-1" all particles will be simulated in a single event
++##
++SIM.guineapig.particlesPerEvent = "-1"
++
++
++################################################################################
++## Configuration for the DDG4 ParticleGun
++################################################################################
++
++##  direction of the particle gun, 3 vector
++SIM.gun.direction = (0, 0, 1)
++
++## choose the distribution of the random direction for theta
++##
++##     Options for random distributions:
++##
++##     'uniform' is the default distribution, flat in theta
++##     'cos(theta)' is flat in cos(theta)
++##     'eta', or 'pseudorapidity' is flat in pseudorapity
++##     'ffbar' is distributed according to 1+cos^2(theta)
++##
++##     Setting a distribution will set isotrop = True
++##
++SIM.gun.distribution = None
++SIM.gun.energy = 25000.0
++
++##  isotropic distribution for the particle gun
++##
++##     use the options phiMin, phiMax, thetaMin, and thetaMax to limit the range of randomly distributed directions
++##     if one of these options is not None the random distribution will be set to True and cannot be turned off!
++##
++SIM.gun.isotrop = False
++SIM.gun.multiplicity = 1
++SIM.gun.particle = "gamma"
++SIM.gun.phiMax = None
++
++## Minimal azimuthal angle for random distribution
++SIM.gun.phiMin = None
++
++##  position of the particle gun, 3 vector
++SIM.gun.position = (0.0, 0.0, 0.0)
++SIM.gun.thetaMax = 0.3
++SIM.gun.thetaMin = 1.5
++
++
++################################################################################
++## Configuration for the output levels of DDG4 components
++################################################################################
++
++## Output level for input sources
++SIM.output.inputStage = 3
++
++## Output level for Geant4 kernel
++SIM.output.kernel = 3
++
++## Output level for ParticleHandler
++SIM.output.part = 3
++
++## Output level for Random Number Generator setup
++SIM.output.random = 6
++
++
++################################################################################
++## Configuration for the Particle Handler/ MCTruth treatment
++################################################################################
++
++## Enable lots of printout on simulated hits and MC-truth information
++SIM.part.enableDetailedHitsAndParticleInfo = False
++
++##  Keep all created particles
++SIM.part.keepAllParticles = False
++
++## Minimal distance between particle vertex and endpoint of parent after
++##     which the vertexIsNotEndpointOfParent flag is set
++##
++SIM.part.minDistToParentVertex = 2.2e-14
++
++## MinimalKineticEnergy to store particles created in the tracking region
++SIM.part.minimalKineticEnergy = 1 * MeV
++
++##  Printout at End of Tracking
++SIM.part.printEndTracking = False
++
++##  Printout at Start of Tracking
++SIM.part.printStartTracking = False
++
++## List of processes to save, on command line give as whitespace separated string in quotation marks
++SIM.part.saveProcesses = ["Decay"]
++
++
++################################################################################
++## Configuration for the PhysicsList
++################################################################################
++# this needs to be set to False if any standard physics list is used:
++SIM.physics.decays = False
++SIM.physics.list = "QGSP_BERT"  # "FTFP_BERT"
++
++##  location of particle.tbl file containing extra particles and their lifetime information
++##
++SIM.physics.pdgfile = os.path.join(
++    os.environ.get("DD4hep_DIR"), "examples/DDG4/examples/particle.tbl"
++)
++
++##  The global geant4 rangecut for secondary production
++##
++##     Default is 0.7 mm as is the case in geant4 10
++##
++##     To disable this plugin and be absolutely sure to use the Geant4 default range cut use "None"
++##
++##     Set printlevel to DEBUG to see a printout of all range cuts,
++##     but this only works if range cut is not "None"
++##
++SIM.physics.rangecut = 0.1 * mm
++
++
++################################################################################
++## Properties for the random number generator
++################################################################################
++
++## If True, calculate random seed for each event based on eventID and runID
++## allows reproducibility even when SkippingEvents
++SIM.random.enableEventSeed = False
++SIM.random.file = None
++SIM.random.luxury = 1
++SIM.random.replace_gRandom = True
++SIM.random.seed = None
++SIM.random.type = None
++
++presets = get_presets_from_args()
++
++SIM.physics.setupUserPhysics(ddml_physics(presets))
++
++
++def aiDancePythonCC3(kernel):
++    ild = True
++    CaloClouds = True
++    old_DD4hep = False  ## use for DD4hep versions/commits before ~ Apr 21st 2023
++
++    if ild == True:
++        ml_barrel_name = "EcalBarrel"
++        ml_barrel_symmetry = 8
++        ml_endcap_name = "EcalEndcap"
++    else:
++        ml_barrel_name = "ECalBarrel"
++        ml_barrel_symmetry = 12
++        ml_endcap_name = "ECalEndcap"
++
++    if CaloClouds == True:
++        ml_file = "../models/CC3_SF_2A.pt"
++        ml_model = (
++            "CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython"
++        )
++        ml_model_1 = (
++            "CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/EndcapModelPython"
++        )
++        ml_correct_angles = False
++
++    from g4units import GeV, MeV  # DO NOT REMOVE OR MOVE!!!!! (EXCLAMATION MARK)
++    from DDG4 import DetectorConstruction, Geant4, PhysicsList
++
++    geant4 = Geant4(kernel)
++
++    seq = geant4.detectorConstruction()
++
++    if old_DD4hep:  # this is now done in DD4hepSimulations.py, i.e. in ddsim
++        seq, act = geant4.addDetectorConstruction(
++            "Geant4DetectorGeometryConstruction/ConstructGeo"
++        )
++        act.DebugMaterials = True
++        act.DebugElements = False
++        act.DebugVolumes = True
++        act.DebugShapes = True
++
++        # Apply sensitive detectors
++        sensitives = DetectorConstruction(
++            kernel, str("Geant4DetectorSensitivesConstruction/ConstructSD")
++        )
++        sensitives.enableUI()
++        seq.adopt(sensitives)
++
++    # -----------------
++    model = DetectorConstruction(kernel, str(ml_model))
++
++    model.isHadShower = False
++    model.RegionName = "EcalBarrelRegion"
++    model.Detector = ml_barrel_name
++    model.Symmetry = ml_barrel_symmetry
++    model.Enable = True
++    model.CorrectForAngles = ml_correct_angles
++    model.ApplicableParticles = {"e+", "e-", "gamma"}
++    model.Etrigger = {
++        "e+": 10.0 * GeV,
++        "e-": 10.0 * GeV,
++        "gamma": 10.0 * GeV,
++    }
++    model.ModelPath = ml_file
++    model.PythonModule = "cc3_sf_2a_wrapper"
++    model.PythonPath = os.path.abspath(
++        os.path.join(os.path.dirname(__file__), "../python/examples")
++    )
++    model.IntraOpNumThreads = 1
++
++    model.enableUI()
++    seq.adopt(model)
++    # -------------------
++    model1 = DetectorConstruction(kernel, str(ml_model_1))
++
++    model1.RegionName = "EcalEndcapRegion"
++    model1.Detector = ml_endcap_name
++    model1.Enable = True
++    model1.CorrectForAngles = ml_correct_angles
++    model1.ApplicableParticles = {"e+", "e-", "gamma"}
++    model1.Etrigger = {
++        "e+": 10.0 * GeV,
++        "e-": 10.0 * GeV,
++        "gamma": 10.0 * GeV,
++    }
++    model1.ModelPath = ml_file
++    model1.PythonModule = "cc3_sf_2a_wrapper"
++    model1.PythonPath = os.path.abspath(
++        os.path.join(os.path.dirname(__file__), "../python/examples")
++    )
++    model1.IntraOpNumThreads = 1
++
++    model1.enableUI()
++    seq.adopt(model1)
++    # -------------------
++
++    # Now build the physics list:
++    phys = kernel.physicsList()
++    ph = PhysicsList(kernel, str("Geant4FastPhysics/FastPhysicsList"))
++    ph.EnabledParticles = ["e+", "e-", "gamma"]
++    ph.BeVerbose = True
++    ph.enableUI()
++    phys.adopt(ph)
++    phys.dump()
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 163a3ca..96f89ea 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -24,11 +24,11 @@ add_test(NAME run_cc3_py_interface_ild COMMAND
+         --outputFile cc3_py_interface_ild_pgun.edm4hep.root
+         --ml-model CC3_BARREL_PY_INTERFACE --ml-model CC3_ENDCAP_PY_INTERFACE
+ )
+-set_test_env(run_cc3_pywrapper_ild)
++#set_test_env(run_cc3_pywrapper_ild)
+ 
+ set_tests_properties(
+   run_cc3_ild
+-  run_cc3_pywrapper_ild
++  #  run_cc3_pywrapper_ild
+ 
+   PROPERTIES
+     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/scripts

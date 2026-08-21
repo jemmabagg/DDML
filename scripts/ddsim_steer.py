@@ -359,7 +359,7 @@ def aiDancePythonAS(kernel):
         "gamma": 10.0 * GeV,
     }
     model.ModelPath = ml_file
-    model.PythonModule = "allshowers_1_wrapper"
+    model.PythonModule = "cc3_5_sf_2a_wrapper"
     model.PythonPath = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../python/examples")
     )
@@ -381,7 +381,7 @@ def aiDancePythonAS(kernel):
         "gamma": 10.0 * GeV,
     }
     model1.ModelPath = ml_file
-    model1.PythonModule = "allshowers_1_wrapper"
+    model1.PythonModule = "cc3_5_sf_2a_wrapper"
     model1.PythonPath = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../python/examples")
     )
