@@ -136,16 +136,14 @@ def energy_corrections(physical_points, point_layer_ids, energy_pl):
 
 @torch.inference_mode()
 def run_inference(inputs):
-    print("DDML inputs:", type(inputs), len(inputs))
-    for i, x in enumerate(inputs):
-        print(f"  inputs[{i}]:", np.asarray(x).shape, np.asarray(x))
+
     #make the torch dtype float32
     dtype = torch.get_default_dtype()
 
     #unpack (one shower per call)
-    energy = torch.from_numpy(inputs[0]).to(dtype)
-    theta_deg = torch.from_numpy(inputs[1]).to(dtype)
-    phi_deg = torch.from_numpy(inputs[2]).to(dtype)
+    energy = torch.from_numpy(np.asarray(inputs[0], dtype=np.float32).reshape(-1)).to(dtype)      # (1,)
+    theta_deg = torch.from_numpy(np.asarray(inputs[1], dtype=np.float32).reshape(-1)).to(dtype)   # (1,)
+    phi_deg = torch.from_numpy(np.asarray(inputs[2], dtype=np.float32).reshape(-1)).to(dtype)     # (1,)
 
     #direction unit vector
     #DDML gives degrees, but torch.sin/cos want radians
