@@ -240,44 +240,9 @@ def run_inference(inputs):
     points = np.stack([x_out, y_out, layer_out.astype(np.float32), e_out], axis=1).astype(np.float32)
 
     header = np.bincount(layer_out.astype(np.int64), minlength=n_layers).astype(np.float32)
+
+    print("layer_out range:", layer_out.min(), layer_out.max(), "n_hits:", len(layer_out))
+    print("header sum:", header.sum(), "n_layers:", n_layers)
    
     full_report = np.concatenate([header, points.ravel()]).astype(np.float32, copy=False)
     return full_report
-
-#Test
-
-if __name__ == "__main__":
-    energy = np.array([50.0], dtype=np.float32)
-    theta = np.array([20.0], dtype=np.float32)
-    phi = np.array([30.0], dtype=np.float32)
-
-    inputs = [
-        energy,
-        theta,
-        phi,
-    ]
-
-    output = run_inference(inputs)
-
-    print("Output shape:", output.shape)
-    print("Output dtype:", output.dtype)
-    print("Number of values:", len(output))
-
-    header = output[:n_layers]
-
-    print("\nPoints per layer:")
-    print(header)
-
-    print("\nTotal points:", int(header.sum()))
-
-    # Everything after the 78-element header
-    point_data = output[n_layers:]
-
-    if len(point_data) > 0:
-        points = point_data.reshape(-1, 4)
-
-        print("\nFirst 10 hits:")
-        print(points[:10])
-
-        print("\nTotal deposited energy [MeV]:")
-        print(points[:, 3].sum())
