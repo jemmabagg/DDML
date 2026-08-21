@@ -136,6 +136,9 @@ def energy_corrections(physical_points, point_layer_ids, energy_pl):
 
 @torch.inference_mode()
 def run_inference(inputs):
+    print("DDML inputs:", type(inputs), len(inputs))
+    for i, x in enumerate(inputs):
+        print(f"  inputs[{i}]:", np.asarray(x).shape, np.asarray(x))
     #make the torch dtype float32
     dtype = torch.get_default_dtype()
 
