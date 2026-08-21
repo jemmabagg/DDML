@@ -8,7 +8,7 @@ import torch
 
 sys.path.insert(0, "/home/baggjemm/k-diffusion")
 sys.path.insert(0, "/home/baggjemm/CaloCloudi")
-n
+
 from src.evaluation import inference
 
 torch.set_num_threads(1)
