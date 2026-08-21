@@ -203,6 +203,22 @@ def run_inference(inputs):
 
     #Rescale energy
     physical_points = energy_corrections(physical_points,point_layer_ids,energy_pl,)
+    print("\npcFM energy per layer:")
+    print(energy_pl)
+
+    print("\nFinal diffusion energy per layer:")
+    final_layer_energy = np.zeros_like(energy_pl)
+
+    for layer in range(n_layers):
+        mask = point_layer_ids == layer
+        final_layer_energy[:, layer] = (
+            physical_points[:, :, 3] * mask
+        ).sum(axis=1)
+
+    print(final_layer_energy)
+
+    print("\nTotal pcFM energy [GeV]:", energy_pl.sum())
+    print("Total final energy [GeV]:", final_layer_energy.sum())
 
     #Unshift to true detector positions
     physical_points = unshift_points(physical_points, point_layer_ids, cond_np, config)
