@@ -79,7 +79,7 @@ AS1_BARREL_PY_INTERFACE = ModelConfig(
     plugin="CaloCloudsTwoAngleModelPolyhedraBarrelPyEmbeddedModel/BarrelModelPython",
     geometry=ILD_BARREL,
     plugin_properties={
-        "PythonModule": "allshowers_1_wrapper",
+        "PythonModule": "cc3_5_sf_2a_wrapper",
         "EntryPoint": "run_inference",
     },
     correct_angles=False,
