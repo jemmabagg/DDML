@@ -359,7 +359,7 @@ def aiDancePythonCC3(kernel):
         "gamma": 10.0 * GeV,
     }
     model.ModelPath = ml_file
-    model.PythonModule = "cc3_sf_2a_wrapper"
+    model.PythonModule = "cc3_5_sf_2a_wrapper" #update pcfm wrapper
     model.PythonPath = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../python/examples")
     )

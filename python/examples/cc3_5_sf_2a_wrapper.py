@@ -6,7 +6,9 @@ import sys
 import numpy as np
 import torch
 
+sys.path.insert(0, "/home/baggjemm/k-diffusion")
 sys.path.insert(0, "/home/baggjemm/CaloCloudi")
+n
 from src.evaluation import inference
 
 torch.set_num_threads(1)
@@ -73,7 +75,7 @@ def run_inference(inputs):
 
     #Step 2: Diffusion model, point cloud, driven by pcFM
 
-    cond_np = cond.cpu().numpy()
+    '''cond_np = cond.cpu().numpy()
     points_per_layer = counts_int[None, :]
     energy_pl = energy_per_layer[None, :]
 
@@ -94,7 +96,7 @@ def run_inference(inputs):
     physical_points[:,:,3] = energies * scale_per_point
 
     #Unshift to true detector positions
-    physical_points = inference.unshift_points(physical_points, point_layer_ids, cond_np, sampler.config)
+    physical_points = inference.unshift_points(physical_points, point_layer_ids, cond_np, sampler.config)'''
 
     #extract real hits
     real = (physical_points[0, :, 3] > 0) & (point_layer_ids[0] >= 0)
