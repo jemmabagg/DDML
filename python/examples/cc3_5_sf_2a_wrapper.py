@@ -188,13 +188,13 @@ def run_inference(inputs):
     counts_int = counts_t.cpu().numpy().ravel().astype(np.int64)   # (78,)
     energy_per_layer = energy_t.cpu().numpy().ravel()              # (78,) pcFM units
 
-    # DIAGNOSTIC ONLY: barrel geometry currently covers 30 ECAL layers.
+    '''# DIAGNOSTIC ONLY: barrel geometry currently covers 30 ECAL layers.
     # Zero everything from layer 30 up so no hit can be assigned layer >= 30.
     N_ECAL = 30
     counts_int[N_ECAL:] = 0
     energy_per_layer[N_ECAL:] = 0
 
-    total_points = int(counts_int.sum())
+    total_points = int(counts_int.sum())'''
 
     #Step 2: Diffusion model, point cloud, driven by pcFM
 
