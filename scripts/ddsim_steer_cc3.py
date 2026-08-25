@@ -30,8 +30,8 @@ SIM.inputFiles = []
 ## number of events to simulate, used in batch mode
 SIM.numberOfEvents = 42
 ## Outputfile from the simulation,only lcio output is supported
-# SIM.outputFile = "dummyOutput_edm4hep.root" ##"dummyOutput.slcio"
-SIM.outputFile = "dummyOutput.slcio"
+SIM.outputFile = "dummyOutput_edm4hep.root" ##"dummyOutput.slcio"
+#SIM.outputFile = "dummyOutput.slcio"
 
 ## Physics list to use in simulation
 SIM.physicsList = None
