@@ -241,7 +241,7 @@ def plot_radial(model, ref=None, path="hist_radial.png"):
  
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    MODEL_FILE = "dummyOutput_edm4hep.root"
+    MODEL_FILE = "/home/baggjemm/DDML/scripts/dummyOutput_edm4hep.root"
     GEANT_FILE = None          # set to your Geant4 reference .root when you have it
  
     model = load_barrel(MODEL_FILE, "pcFM+CaloClouds")
