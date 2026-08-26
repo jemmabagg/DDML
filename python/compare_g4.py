@@ -318,10 +318,6 @@ ax1.set_ylabel("Number of events")
 ax1.set_title("Photon energy reconstruction")
 
 ax1.legend()
-ax1.grid(
-    axis="y",
-    alpha=0.3
-)
 
 
 # ------------------------------------------------------------
@@ -363,29 +359,18 @@ n_per_bin = np.asarray(n_per_bin)
 
 
 # Plot mean response with standard deviation
-ax2.errorbar(
-    bin_centres,
-    mean_response,
-    yerr=std_response,
-    fmt="o",
-    capsize=4,
-    label="Mean ± standard deviation"
-)
+ax2.errorbar(bin_centres,mean_response,yerr=std_response,fmt="ko", capsize=3, markersize=3)
 
 # Perfect reconstruction
 ax2.axhline(
     1.0,
     linestyle="--",
     linewidth=1.5,
-    label="Reco = truth"
 )
 
 ax2.set_xlabel("True photon energy [GeV]")
 ax2.set_ylabel(r"$E_{\mathrm{reco}} / E_{\mathrm{true}}$")
 ax2.set_title("Photon energy response")
-
-ax2.grid(alpha=0.3)
-ax2.legend()
 
 
 plt.tight_layout()
@@ -432,11 +417,6 @@ plt.xticks(
         0,
         max_mult + 1
     )
-)
-
-plt.grid(
-    axis="y",
-    alpha=0.3
 )
 
 plt.tight_layout()
