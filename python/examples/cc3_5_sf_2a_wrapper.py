@@ -179,17 +179,32 @@ def run_inference(inputs):
             raw = raw[:-1]
         pcfm_out = torch.cat(list(raw), dim=1)
 
-    #post processing (from pcFM)
-    pcfm_out = torch.clamp(pcfm_out, min=0.0) # clamp >= 0
-    counts_t = (pcfm_out[:, :n_layers] + 0.5)   # CC3 count calibration
-    counts_t *= 0.64
+    # post processing (from pcFM)
+    pcfm_out = torch.clamp(pcfm_out, min=0.0)
+
+    # Raw pcFM cluster counts
+    raw_counts_t = pcfm_out[:, :n_layers] + 0.5
+
+    print("\n===== CLUSTER COUNT TEST =====")
+    print("Raw pcFM total clusters:", raw_counts_t.sum().item())
+
+    # CC3.5 calibration
+    counts_t = raw_counts_t * 0.64
+
+    print("After 0.64 scaling:", counts_t.sum().item())
+
+    # Diffusion model needs integer number of clusters
     counts_t = counts_t.to(torch.int32)
 
-    energy_t = pcfm_out[:, n_layers:2 * n_layers].clone() 
-    energy_t[counts_t == 0] = 0.0 #zero the energy per layer where count == 0
+    print("After integer conversion:", counts_t.sum().item())
 
-    counts_int = counts_t.cpu().numpy().ravel().astype(np.int64)   # (78,)
-    energy_per_layer = energy_t.cpu().numpy().ravel()              # (78,) pcFM units
+    energy_t = pcfm_out[:, n_layers:2 * n_layers].clone()
+    energy_t[counts_t == 0] = 0.0
+
+    counts_int = counts_t.cpu().numpy().ravel().astype(np.int64)
+    energy_per_layer = energy_t.cpu().numpy().ravel()
+
+    print("counts_int total:", counts_int.sum())
 
     '''# DIAGNOSTIC ONLY: barrel geometry currently covers 30 ECAL layers.
     # Zero everything from layer 30 up so no hit can be assigned layer >= 30.
@@ -202,10 +217,17 @@ def run_inference(inputs):
     #Step 2: Diffusion model, point cloud, driven by pcFM
 
     cond_np = cond.cpu().numpy()
+
     points_per_layer = counts_int[None, :]
     energy_pl = energy_per_layer[None, :]
+
     num_points = points_per_layer.sum(axis=1)
     max_points = int(np.max(num_points))
+
+    print("\n===== DIFFUSION MODEL INPUT =====")
+    print("points_per_layer total:", points_per_layer.sum())
+    print("num_points:", num_points)
+    print("max_points:", max_points)
 
     #Henry's work
     noise = torch.randn(1, max_points, feature_dim, dtype=dtype,)
