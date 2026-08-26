@@ -157,22 +157,67 @@ def _finish(ax, xlabel, ylabel, title, path):
 
 #Energy per layer plot
 def plot_longitudinal(model, ref=None, path="prof_longitudinal.png"):
-    fig, ax = plt.subplots(); L = np.arange(N_LAYERS)
-    ax.step(L, model.mean_energy_per_layer(), where="mid", label=model.label)
+    fig, (ax_main, ax_ratio) = plt.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+    L = np.arange(N_LAYERS)
+
+    mean1 = model.mean_energy_per_layer()
+    ax_main.step(L, mean1, where="mid", label=model.label)
+
     if ref is not None:
-        ax.step(L, ref.mean_energy_per_layer(), where="mid", ls="--", label=ref.label)
-    ax.axvline(ECAL_HCAL_BOUNDARY, color="grey", lw=0.8, alpha=0.6)
-    _finish(ax, "layer", f"mean E / event [{ENERGY_UNIT}]",
-            "Longitudinal shower profile", path)
+        mean2 = ref.mean_energy_per_layer()
+        ax_main.step(L, mean2, where="mid", ls="--", label=ref.label)
+
+        sem1 = model.sem_energy_per_layer()   # standard error per layer
+        sem2 = ref.sem_energy_per_layer()
+
+        ratio = mean1 / mean2
+        ratio_unc = ratio * np.sqrt((sem1/mean1)**2 + (sem2/mean2)**2)
+
+        ax_ratio.axhline(1.0, color="r", ls="--")
+        ax_ratio.errorbar(L, ratio, yerr=ratio_unc,
+                          fmt="ko", capsize=3, markersize=3)
+
+    ax_main.set_ylabel(f"mean E / event [{ENERGY_UNIT}]")
+    ax_main.legend()
+    ax_ratio.set_ylabel("gen / real")
+    ax_ratio.set_xlabel("layer")
+
+    fig.subplots_adjust(hspace=0.05)
+    fig.suptitle("Longitudinal shower profile")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
  
 #Number of hits per layer plot
 def plot_hits_per_layer(model, ref=None, path="prof_hits_per_layer.png"):
-    fig, ax = plt.subplots(); L = np.arange(N_LAYERS)
-    ax.step(L, model.mean_hits_per_layer(), where="mid", label=model.label)
+    fig, (ax_main, ax_ratio) = plt.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [3, 1]})
+    L = np.arange(N_LAYERS)
+
+    mean1 = model.mean_hits_per_layer()
+    ax_main.step(L, mean1, where="mid", label=model.label)
+
     if ref is not None:
-        ax.step(L, ref.mean_hits_per_layer(), where="mid", ls="--", label=ref.label)
-    ax.axvline(ECAL_HCAL_BOUNDARY, color="grey", lw=0.8, alpha=0.6)
-    _finish(ax, "layer", "mean hits / event", "Occupancy profile (pcFM)", path)
+        mean2 = ref.mean_hits_per_layer()
+        ax_main.step(L, mean2, where="mid", ls="--", label=ref.label)
+        
+        sem1 = model.sem_hits_per_layer()   # standard error per layer
+        sem2 = ref.sem_hits_per_layer()
+
+        ratio = mean1 / mean2
+        ratio_unc = ratio * np.sqrt((sem1/mean1)**2 + (sem2/mean2)**2)
+
+        ax_ratio.axhline(1.0, color="r", ls="--")
+        ax_ratio.errorbar(L, ratio, yerr=ratio_unc,
+                            fmt="ko", capsize=3, markersize=3)
+    
+    ax_main.set_ylabel(f"mean hit / event")
+    ax_main.legend()
+    ax_ratio.set_ylabel("gen / real")
+    ax_ratio.set_xlabel("layer")
+
+    fig.subplots_adjust(hspace=0.05)
+    fig.suptitle("Occupancy Profile")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
  
 if __name__ == "__main__":
     MODEL_FILE = "/home/baggjemm/DDML/scripts/dummyOutput_edm4hep.root"
