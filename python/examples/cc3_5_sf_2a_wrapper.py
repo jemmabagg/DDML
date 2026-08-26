@@ -189,7 +189,7 @@ def run_inference(inputs):
     print("Raw pcFM total clusters:", raw_counts_t.sum().item())
 
     # CC3.5 calibration
-    counts_t = raw_counts_t * 0.664
+    counts_t = raw_counts_t * 0.67
 
     print("After 0.64 scaling:", counts_t.sum().item())
 
