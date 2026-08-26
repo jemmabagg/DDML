@@ -102,12 +102,11 @@ for i, event in enumerate(events):
 
     for pfo in pfos:
 
-        if abs(pfo.getType()) == PHOTON_PDG:
+        if abs(pfo.getPDG()) == PHOTON_PDG:
             reco_photons.append(pfo)
 
     n_reco = len(reco_photons)
 
-    # Total reconstructed photon energy
     reco_energy = sum(
         pfo.getEnergy()
         for pfo in reco_photons
