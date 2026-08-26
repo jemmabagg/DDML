@@ -189,7 +189,7 @@ def run_inference(inputs):
     print("Raw pcFM total clusters:", raw_counts_t.sum().item())
 
     # CC3.5 calibration
-    counts_t = raw_counts_t * 0.64
+    counts_t = raw_counts_t * 0.66
 
     print("After 0.64 scaling:", counts_t.sum().item())
 
@@ -199,10 +199,12 @@ def run_inference(inputs):
     print("After integer conversion:", counts_t.sum().item())
 
     energy_t = pcfm_out[:, n_layers:2 * n_layers].clone()
+    energy_t *= 0.75
     energy_t[counts_t == 0] = 0.0
 
     counts_int = counts_t.cpu().numpy().ravel().astype(np.int64)
     energy_per_layer = energy_t.cpu().numpy().ravel()
+    print("PCFM total deposited energy [GeV]:", energy_per_layer.sum())
 
     print("counts_int total:", counts_int.sum())
 
