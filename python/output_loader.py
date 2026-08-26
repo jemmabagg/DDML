@@ -250,6 +250,15 @@ if __name__ == "__main__":
     print("layer range:       ", int(model.layer.min()), "-", int(model.layer.max()))
     print("total E/event mean:", round(model.total_energy_per_event().mean(), 3),
           ENERGY_UNIT, "(if ~1000x too small, energy is in GeV -> add *1e3 in load_from_root)")
+    model_mean_E = model.total_energy_per_event().mean()
+    ref_mean_E = ref.total_energy_per_event().mean()
+
+    energy_ratio = ref_mean_E / model_mean_E
+
+    print("\n===== ENERGY CALIBRATION =====")
+    print("Mean model deposited energy:", model_mean_E, ENERGY_UNIT)
+    print("Mean Geant4 deposited energy:", ref_mean_E, ENERGY_UNIT)
+    print("Geant4 / model energy ratio:", energy_ratio)
  
     # plots
     plot_longitudinal(model, ref)
