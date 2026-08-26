@@ -48,6 +48,23 @@ class Showers:
         m = self.layer >= 0
         lay = np.clip(self.layer[m], 0, N_LAYERS - 1)
         return np.bincount(lay, minlength=N_LAYERS)[:N_LAYERS] / self.n_events
+
+    def _per_event_layer(self, values):
+        """(n_events, N_LAYERS) matrix; entry = sum of `values` for that (event, layer)."""
+        m = self.layer >= 0
+        ev = self.event_id[m]
+        lay = np.clip(self.layer[m], 0, N_LAYERS - 1)
+        mat = np.zeros((self.n_events, N_LAYERS))
+        np.add.at(mat, (ev, lay), values[m])
+        return mat
+
+    def sem_energy_per_layer(self):
+        mat = self._per_event_layer(self.energy)
+        return mat.std(axis=0, ddof=1) / np.sqrt(self.n_events)
+
+    def sem_hits_per_layer(self):
+        mat = self._per_event_layer(np.ones_like(self.energy))
+        return mat.std(axis=0, ddof=1) / np.sqrt(self.n_events)
  
     # transverse 
     def radius_per_hit(self):
