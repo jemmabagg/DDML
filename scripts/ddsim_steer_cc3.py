@@ -28,7 +28,7 @@ SIM.inputFiles = []
 ## Macro file to execute for runType 'run' or 'vis'
 # SIM.macroFile = "./test_onnx.mac"
 ## number of events to simulate, used in batch mode
-SIM.numberOfEvents = 100
+SIM.numberOfEvents = 500
 ## Outputfile from the simulation,only lcio output is supported
 SIM.outputFile = "finalOutput_edm4hep.root" ##"dummyOutput.slcio"
 #SIM.outputFile = "dummyOutput.slcio"
