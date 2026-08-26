@@ -183,6 +183,8 @@ def run_inference(inputs):
     pcfm_out = torch.clamp(pcfm_out, min=0.0) # clamp >= 0
     counts_t = (pcfm_out[:, :n_layers] + 0.5).to(torch.int32)   # CC3 count calibration
     counts_t *= 0.64
+    counts_t = counts_t.to(torch.int32)
+
     energy_t = pcfm_out[:, n_layers:2 * n_layers].clone() 
     energy_t[counts_t == 0] = 0.0 #zero the energy per layer where count == 0
 
