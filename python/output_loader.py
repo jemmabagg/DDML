@@ -165,12 +165,6 @@ def load_barrel(path, label):
         label=label,
     )
  
-# Plot functions
-def _finish(ax, xlabel, ylabel, title, path):
-    ax.set_xlabel(xlabel); ax.set_ylabel(ylabel); ax.set_title(title); ax.legend()
-    ax.figure.tight_layout(); ax.figure.savefig(path, dpi=150)
-    print("wrote", path); plt.close(ax.figure)
- 
 
 #Energy per layer plot
 def plot_longitudinal(model, ref=None, path="prof_longitudinal.png"):
