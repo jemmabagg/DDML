@@ -14,7 +14,7 @@ REC_FILE = (
     sys.argv[1]
     if len(sys.argv) > 1
     else "/home/baggjemm/ILDConfig/StandardConfig/production/"
-         "dummyOutput_debug_REC.edm4hep.root"
+         "finalOutput_debug_REC.edm4hep.root"
 )
 
 PHOTON_PDG = 22
