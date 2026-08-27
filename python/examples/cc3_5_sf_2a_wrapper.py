@@ -145,11 +145,6 @@ def run_inference(inputs):
     theta_deg = torch.from_numpy(np.asarray(inputs[1], dtype=np.float32).reshape(-1)).to(dtype)   # (1,)
     phi_deg = torch.from_numpy(np.asarray(inputs[2], dtype=np.float32).reshape(-1)).to(dtype)     # (1,)
 
-    print("\n===== ML INPUT =====")
-    print("energy:", inputs[0])
-    print("theta:", inputs[1])
-    print("phi:", inputs[2])
-
     #direction unit vector
     #DDML gives degrees, but torch.sin/cos want radians
     theta = torch.deg2rad(theta_deg)
@@ -185,18 +180,11 @@ def run_inference(inputs):
     # Raw pcFM cluster counts
     raw_counts_t = pcfm_out[:, :n_layers] + 0.5
 
-    print("\n===== CLUSTER COUNT TEST =====")
-    print("Raw pcFM total clusters:", raw_counts_t.sum().item())
-
     # CC3.5 calibration
     counts_t = raw_counts_t * 0.67
 
-    print("After 0.64 scaling:", counts_t.sum().item())
-
     # Diffusion model needs integer number of clusters
     counts_t = counts_t.to(torch.int32)
-
-    print("After integer conversion:", counts_t.sum().item())
 
     energy_t = pcfm_out[:, n_layers:2 * n_layers].clone()
     energy_t *= 0.74
@@ -204,17 +192,6 @@ def run_inference(inputs):
 
     counts_int = counts_t.cpu().numpy().ravel().astype(np.int64)
     energy_per_layer = energy_t.cpu().numpy().ravel()
-    print("PCFM total deposited energy [GeV]:", energy_per_layer.sum())
-
-    print("counts_int total:", counts_int.sum())
-
-    '''# DIAGNOSTIC ONLY: barrel geometry currently covers 30 ECAL layers.
-    # Zero everything from layer 30 up so no hit can be assigned layer >= 30.
-    N_ECAL = 30
-    counts_int[N_ECAL:] = 0
-    energy_per_layer[N_ECAL:] = 0
-
-    total_points = int(counts_int.sum())'''
 
     #Step 2: Diffusion model, point cloud, driven by pcFM
 
@@ -225,11 +202,6 @@ def run_inference(inputs):
 
     num_points = points_per_layer.sum(axis=1)
     max_points = int(np.max(num_points))
-
-    print("\n===== DIFFUSION MODEL INPUT =====")
-    print("points_per_layer total:", points_per_layer.sum())
-    print("num_points:", num_points)
-    print("max_points:", max_points)
 
     #Henry's work
     noise = torch.randn(1, max_points, feature_dim, dtype=dtype,)
@@ -243,10 +215,7 @@ def run_inference(inputs):
 
     #Rescale energy
     physical_points = energy_corrections(physical_points,point_layer_ids,energy_pl,)
-    print("\npcFM energy per layer:")
-    print(energy_pl)
 
-    print("\nFinal diffusion energy per layer:")
     final_layer_energy = np.zeros_like(energy_pl)
 
     for layer in range(n_layers):
@@ -254,11 +223,6 @@ def run_inference(inputs):
         final_layer_energy[:, layer] = (
             physical_points[:, :, 3] * mask
         ).sum(axis=1)
-
-    print(final_layer_energy)
-
-    print("\nTotal pcFM energy [GeV]:", energy_pl.sum())
-    print("Total final energy [GeV]:", final_layer_energy.sum())
 
     #Unshift to true detector positions
     physical_points = unshift_points(physical_points, point_layer_ids, cond_np, config)
@@ -280,9 +244,6 @@ def run_inference(inputs):
     points = np.stack([x_out, y_out, layer_out.astype(np.float32), e_out], axis=1).astype(np.float32)
 
     header = np.bincount(layer_out.astype(np.int64), minlength=n_layers).astype(np.float32)
-
-    print("layer_out range:", layer_out.min(), layer_out.max(), "n_hits:", len(layer_out))
-    print("header sum:", header.sum(), "n_layers:", n_layers)
    
     full_report = np.concatenate([header, points.ravel()]).astype(np.float32, copy=False)
     return full_report
