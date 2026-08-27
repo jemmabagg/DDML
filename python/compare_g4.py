@@ -203,22 +203,18 @@ fig, (ax_main, ax_ratio) = plt.subplots(
     gridspec_kw={"height_ratios": [3, 1]},
 )
 
-# --- main panel: mean reco energy vs true energy ---
-prof_true, prof_reco = [], []
-for low, high in zip(ENERGY_BINS[:-1], ENERGY_BINS[1:]):
-    m = (true_E >= low) & (true_E < high)
-    if m.sum() == 0:
-        continue
-    prof_true.append(0.5 * (low + high))
-    prof_reco.append(np.mean(reco_E[m]))
+# --- main panel: energy distributions as step histograms ---
+max_energy = max(np.max(true_E), np.max(reco_E))
+hist_bins = np.linspace(0, max_energy * 1.05, 20)
+centres = 0.5 * (hist_bins[:-1] + hist_bins[1:])
 
-lim = max(np.max(true_E), np.max(reco_E)) * 1.05
-ax_main.plot([0, lim], [0, lim], "r--", label=r"$E_{\rm reco}=E_{\rm true}$")
-ax_main.plot(prof_true, prof_reco, "ko-", markersize=3, label="reconstructed")
+reco_counts, _ = np.histogram(reco_E, bins=hist_bins)
+truth_counts, _ = np.histogram(true_E, bins=hist_bins)
 
-ax_main.set_xlim(0, lim)
-ax_main.set_ylim(0, lim)
-ax_main.set_ylabel("mean reco E [GeV]")
+ax_main.step(centres, reco_counts, where="mid", label="ILD reconstructed")
+ax_main.step(centres, truth_counts, where="mid", ls="--", label="Geant4 truth")
+
+ax_main.set_ylabel("events")
 ax_main.legend()
 
 # --- ratio panel: mean reco/true per true-energy bin ---
