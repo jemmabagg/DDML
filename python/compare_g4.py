@@ -194,120 +194,74 @@ response = reco_E / true_E
 # ============================================================
 # FIGURE 1
 #
-# Top:    True vs reconstructed photon energy
-# Bottom: Reco / true energy vs true energy
+# Main:  photon energy distributions (reco vs truth)
+# Ratio: mean reco/true response, binned in true energy
 # ============================================================
 
-fig, (ax1, ax2) = plt.subplots(
-    2, 1,
-    figsize=(8, 9),
-    gridspec_kw={"height_ratios": [2, 1]},
-    sharex=False,
+fig, (ax_main, ax_ratio) = plt.subplots(
+    2, 1, sharex=True,
+    gridspec_kw={"height_ratios": [3, 1]},
 )
 
-
-# ------------------------------------------------------------
-# Top panel: energy distributions
-# ------------------------------------------------------------
-
+# --- main panel: energy distributions as step histograms ---
 max_energy = max(np.max(true_E), np.max(reco_E))
 hist_bins = np.linspace(0, max_energy * 1.05, 20)
+centres = 0.5 * (hist_bins[:-1] + hist_bins[1:])
 
-ax1.hist(
-    true_E, bins=hist_bins,
-    histtype="step", linewidth=2,
-    label="Geant4 truth",
-)
+reco_counts, _ = np.histogram(reco_E, bins=hist_bins)
+truth_counts, _ = np.histogram(true_E, bins=hist_bins)
 
-ax1.hist(
-    reco_E, bins=hist_bins,
-    histtype="step", linewidth=2,
-    label="ILD reconstructed",
-)
+ax_main.step(centres, reco_counts, where="mid", label="ILD reconstructed")
+ax_main.step(centres, truth_counts, where="mid", ls="--", label="Geant4 truth")
 
-ax1.set_ylabel("Number of events")
-ax1.set_title("Photon energy reconstruction")
-ax1.legend()
+ax_main.set_ylabel("events")
+ax_main.legend()
 
-
-# ------------------------------------------------------------
-# Bottom panel: energy response
-# ------------------------------------------------------------
-
+# --- ratio panel: mean reco/true per true-energy bin ---
 bin_centres = []
 mean_response = []
-std_response = []
-n_per_bin = []
+sem_response = []
 
 for low, high in zip(ENERGY_BINS[:-1], ENERGY_BINS[1:]):
-
-    mask = (true_E >= low) & (true_E < high)
-    values = response[mask]
-
+    values = response[(true_E >= low) & (true_E < high)]
     if len(values) == 0:
         continue
-
     bin_centres.append(0.5 * (low + high))
     mean_response.append(np.mean(values))
-    std_response.append(np.std(values))
-    n_per_bin.append(len(values))
-
+    sem_response.append(np.std(values) / np.sqrt(len(values)))  # SEM on the mean
 
 bin_centres = np.asarray(bin_centres)
 mean_response = np.asarray(mean_response)
-std_response = np.asarray(std_response)
-n_per_bin = np.asarray(n_per_bin)
+sem_response = np.asarray(sem_response)
+
+ax_ratio.axhline(1.0, color="r", ls="--")
+ax_ratio.errorbar(bin_centres, mean_response, yerr=sem_response,
+                  fmt="ko", capsize=3, markersize=3)
+
+ax_ratio.set_ylabel(r"$E_{\mathrm{reco}} / E_{\mathrm{true}}$")
+ax_ratio.set_xlabel("photon energy [GeV]")
+
+fig.subplots_adjust(hspace=0.05)
+fig.suptitle("Photon energy response")
+fig.savefig("photon_energy_comparison.png", dpi=150, bbox_inches="tight")
+plt.close(fig)
 
 
-# Mean response with standard deviation (= resolution) as error bars
-ax2.errorbar(
-    bin_centres, mean_response, yerr=std_response,
-    fmt="ko", capsize=3, markersize=3,
-)
-
-# Perfect reconstruction
-ax2.axhline(1.0, linestyle="--", linewidth=1.5)
-
-ax2.set_xlabel("True photon energy [GeV]")
-ax2.set_ylabel(r"$E_{\mathrm{reco}} / E_{\mathrm{true}}$")
-ax2.set_title("Photon energy response")
-
-
-plt.tight_layout()
-plt.savefig("photon_energy_comparison.png", dpi=200, bbox_inches="tight")
-plt.close()
-
-
-# ============================================================
-# FIGURE 2
-#
-# Photon reconstruction multiplicity
+#============================================================
+# FIGURE 2 : photon reconstruction multiplicity
 # ============================================================
 
-plt.figure(figsize=(7, 5))
+fig, ax = plt.subplots()
 
 max_mult = int(reco_multiplicities.max())
 bins = np.arange(-0.5, max_mult + 1.5, 1)
 
-plt.hist(reco_multiplicities, bins=bins, edgecolor="black")
+ax.hist(reco_multiplicities, bins=bins, histtype="step", lw=2)
 
-plt.xlabel("Number of reconstructed photons")
-plt.ylabel("Number of events")
-plt.title("Photon reconstruction multiplicity")
-plt.xticks(np.arange(0, max_mult + 1))
+ax.set_xlabel("number of reconstructed photons")
+ax.set_ylabel("events")
+ax.set_xticks(np.arange(0, max_mult + 1))
 
-plt.tight_layout()
-plt.savefig("photon_reco_multiplicity.png", dpi=200, bbox_inches="tight")
-plt.close()
-
-
-# ============================================================
-# Final output
-# ============================================================
-
-print()
-print("=" * 65)
-print("Plots saved:")
-print("  photon_energy_comparison.png")
-print("  photon_reco_multiplicity.png")
-print("=" * 65)
+fig.suptitle("Photon reconstruction multiplicity")
+fig.savefig("photon_reco_multiplicity.png", dpi=150, bbox_inches="tight")
+plt.close(fig)
