@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-"""
-Overlay comparison of two REC files at PFO level, with error bands.
-
-Usage:
-    python3 compare_two.py FAST_REC.edm4hep.root FULL_REC.edm4hep.root
-
-Both files must contain MCParticles and PandoraPFOs (both must have been
-through ILD reconstruction). If a file's printed efficiency is ~0, it has
-no PFOs - it is sim-level, not reco-level, and does not belong here.
-"""
 
 import sys
 import numpy as np
@@ -21,11 +10,6 @@ N_EBINS = 25
 
 FAST_COLOUR = "C0"
 FULL_COLOUR = "C1"
-
-
-# ============================================================
-# Supervisor-provided: histogram with shaded deviation band
-# ============================================================
 
 def plot_hist_with_devation(
     ax,
@@ -91,10 +75,6 @@ def draw_ratio_overflow(ax, x, y, ylim=RATIO_YLIM):
                    marker="v", color="k", clip_on=False, zorder=5)
 
 
-# ============================================================
-# Process one REC file -> per-event arrays
-# ============================================================
-
 def process(rec_file, label):
 
     print(f"\nOpening [{label}]: {rec_file}")
@@ -143,10 +123,6 @@ def process(rec_file, label):
     return d
 
 
-# ============================================================
-# Main
-# ============================================================
-
 if len(sys.argv) < 3:
     sys.exit("usage: compare_two.py FAST_REC.root FULL_REC.root")
 
@@ -157,9 +133,7 @@ ef = fast["reco_E"][np.isfinite(fast["reco_E"])]
 eg = full["reco_E"][np.isfinite(full["reco_E"])]
 
 
-# ------------------------------------------------------------
-# FIGURE 1: reco-energy histograms + error bands, fast/full ratio
-# ------------------------------------------------------------
+# Reconstructed photon energy
 
 emax = max(ef.max(), eg.max()) * 1.05
 edges = np.linspace(0, emax, N_EBINS + 1)
@@ -209,9 +183,7 @@ fig.savefig("energy_fast_vs_full.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 
-# ------------------------------------------------------------
-# FIGURE 2: multiplicity histograms + error bands, fast/full ratio
-# ------------------------------------------------------------
+# Multiplicity
 
 max_mult = int(max(fast["mult"].max(), full["mult"].max()))
 mbins = np.arange(-0.5, max_mult + 1.5, 1)
